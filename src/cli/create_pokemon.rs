@@ -25,7 +25,6 @@ pub fn run(repo: Arc<dyn Repository>) {
             return;
         }
     };
-    println!("{:?}", req.types);
     match domain::create_pokemon::execute(repo, req) {
         Ok(res) => println!(
             "{:?}",

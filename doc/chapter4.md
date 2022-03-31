@@ -15,6 +15,7 @@
 ## 开始之前
 
 我做了两个我在第一篇文章中没有看到的更改。在 `domain/entities.rs` 中，我用 Self 替换了 u16：
+
 ```rs
 impl From<PokemonNumber> for u16 {
     fn from(n: PokemonNumber) -> Self {
@@ -22,7 +23,9 @@ impl From<PokemonNumber> for u16 {
     }
 }
 ```
+
 在 `repositories/pokemons.rs` 中，我在 `with_error` 上添加了一个测试注释：
+
 ```rs
 impl InMemoryRepository {
     #[cfg(test)]
@@ -34,14 +37,17 @@ impl InMemoryRepository {
     }
 }
 ```
+
 让我们现在进行重构 :)
 
 ## 使用 Result 替换自定义枚举
-*Use Result instead of custom enums*
+
+_Use Result instead of custom enums_
 
 之前我们使用自定义枚举作为 Usecase 和 存储库 的返回值，现在把他们重构为 Result。
 
 ### 更改 Usecase 的返回类型
+
 首先，我们将 Usecase 的返回值暂时设置为 500 以方便测试、
 
 ```rs
@@ -56,7 +62,9 @@ pub fn serve(repo: Arc<dyn Repository>, req: &rouille::Request) -> rouille::Resp
     // }
 }
 ```
+
 现在我们将测试的结构哦修改为 Result 类型：
+
 ```rs
     #[test]
     fn it_should_return_a_bad_request_error_when_request_is_invalid() {
@@ -95,7 +103,9 @@ pub fn serve(repo: Arc<dyn Repository>, req: &rouille::Request) -> rouille::Resp
     }
 }
 ```
+
 接着再修改 Usecase，把它的返回值修改为 Result ：
+
 ```rs
 pub fn execute(repo: Arc<dyn Repository>, req: Request) -> Result<u16, Error> {
     ...
@@ -108,7 +118,9 @@ pub fn execute(repo: Arc<dyn Repository>, req: Request) -> Result<u16, Error> {
     }
 }
 ```
+
 测试现在应该通过了！
+
 ```
 cargo test
 running 4 tests
@@ -117,7 +129,9 @@ test it_should_return_a_bad_request_error_when_request_is_invalid ... ok
 test it_should_return_an_unknown_error_when_an_unexpected_error_happens ... ok
 test it_should_return_the_pokemon_number_otherwise ... ok
 ```
+
 最后再去修改我们的 API：
+
 ```rs
 pub fn serve(repo: Arc<dyn Repository>, req: &rouille::Request) -> rouille::Response {
     let req = ...
@@ -129,10 +143,13 @@ pub fn serve(repo: Arc<dyn Repository>, req: &rouille::Request) -> rouille::Resp
     }
 }
 ```
+
 Usecase 修改完成，接下来我们去处理 Reposity
 
 ### 更改 Repository 的返回类型
+
 Repository 没有测试，所以我们从修改 Usecase 调用 repo 的返回值开始：
+
 ```rs
 use crate::repositories::pokemon::{InsertError, ...};
 
@@ -148,14 +165,19 @@ pub fn execute(repo: Arc<dyn Repository>, req: Request) -> Result<u16, Error> {
     }
 }
 ```
-在测试 Confilt 时，您应该将 `.ok()` 添加到存储库 Insert 。 现在让我们在 repositories/pokemon.rs 中删除 Insert 并创建 InsertError：
+
+在测试 Confilt 时，您应该将 `.ok()` 添加到存储库 Insert 。 现在让我们在 repositories/pokemon.rs 中删除
+Insert 并创建 InsertError：
+
 ```rs
 pub enum InsertError {
     Conflict,
     Unknown,
 }
 ```
+
 最后在更改 Repository Trait 和 InMemoryRepository 的返回值类型即可：
+
 ```rs
 pub trait Repository: Send + Sync {
     fn insert(&self,
@@ -193,11 +215,14 @@ impl Repository for InMemoryRepository {
 ```
 
 ## 填加一个新的 Usecase
-在常规的 HTTP API 中，每次创建一个新的对象，我通常会把这个对象在返回回去。特别是当返回的对象中包含一切前端没有传来的字段。比如 `create_at` 等由存储库添加的字段。
+
+在常规的 HTTP API 中，每次创建一个新的对象，我通常会把这个对象在返回回去。特别是当返回的对象中包含一切前端没有传来的字段。比如 `create_at`
+等由存储库添加的字段。
 
 首先，我需要你像我们一开始那样暂时注释掉 `api/create_pokemon.rs`。 以便于我们专注于测试。
 
 在 `domain/create_pokemon.rs` 中添加一个新的测试：
+
 ```rs
 #[test]
 fn it_should_return_the_pokemon_number_otherwise() {
@@ -224,7 +249,9 @@ fn it_should_return_the_pokemon_number_otherwise() {
     };
 }
 ```
+
 同时创建一个 Response 结构体
+
 ```rs
 pub struct Response {
     pub number: u16,
@@ -232,7 +259,9 @@ pub struct Response {
     pub types: Vec<String>,
 }
 ```
+
 接下来，我们将修改 `execute` 函数，在插入成功时应该返回 Pokemon 的所有字段：
+
 ```rs
 use crate::domain::entities::{Pokemon, ...};
 
@@ -255,7 +284,9 @@ pub fn execute(repo: Arc<dyn Repository>, req: Request) -> Result<Response, Erro
     }
 }
 ```
+
 在 insert 只执行成功后，直接返回一个 Pokemon 结构体：
+
 ```rs
 pub trait Repository: Send + Sync {
     fn insert(
@@ -280,7 +311,9 @@ impl Repository for InMemoryRepository {
     }
 }
 ```
+
 为了能够使用 `pokemon.clone()` 需要为 Pokemon 实现 `Clone` Trait：
+
 ```rs
 #[derive(Clone)]
 pub struct PokemonName(String);
@@ -294,7 +327,9 @@ enum PokemonType {
 #[derive(Clone)]
 pub struct Pokemon {
 ```
+
 现在存储库的插入逻辑已经完成，usecase 希望能够直接拿到 Pokemon 的 name 和 types 字段，我们需要把这两个字端也转为公开的：
+
 ```rs
 pub struct Pokemon {
     pub number: PokemonNumber,
@@ -302,7 +337,10 @@ pub struct Pokemon {
     pub types: PokemonTypes,
 }
 ```
-接着，我们需要为 Response 实现类型转换 从 `PokemonNumber` 到 `u16`、从 `PokemonName` 转换为 `String`、从 `PokemonTypes` 转换为 `Vec<String>`:
+
+接着，我们需要为 Response 实现类型转换 从 `PokemonNumber` 到 `u16`、从 `PokemonName` 转换为
+`String`、从 `PokemonTypes` 转换为 `Vec<String>`:
+
 ```rs
 impl From<PokemonName> for String {
     fn from(n: PokemonName) -> Self {
@@ -329,7 +367,9 @@ impl From<PokemonType> for String {
     }
 }
 ```
+
 现在测试应该能够通过了：
+
 ```
 cargo test
 running 4 tests
@@ -338,7 +378,9 @@ test it_should_return_a_bad_request_error_when_request_is_invalid ... ok
 test it_should_return_an_unknown_error_when_an_unexpected_error_happens ... ok
 test it_should_return_the_pokemon_number_otherwise ... ok
 ```
+
 最后，我们去更新 api 的内容：
+
 ```rs
 #[derive(Serialize)]
 struct Response {
@@ -365,21 +407,26 @@ pub fn serve(repo: Arc<dyn Repository>, req: &rouille::Request) -> rouille::Resp
     }
 }
 ```
+
 cargo run 之后，再次向 server 发送数据：
+
 ```json
 {
-    "number": 17,
-    "name": "Charmander",
-    "types": [
-        "Fire"
-    ]
+  "number": 17,
+  "name": "Charmander",
+  "types": [
+    "Fire"
+  ]
 }
 ```
 
 ## 创建一些测试值
-你喜欢在测试过程中使用 PokemonName::try_from(String::from("Pikachu")).unwrap() 之类的东西吗？我也不。让我们在 domain/entities.rs 中创建一些函数来帮助我们。
+
+你喜欢在测试过程中使用 PokemonName::try_from(String::from("Pikachu")).unwrap()
+之类的东西吗？我也不。让我们在 domain/entities.rs 中创建一些函数来帮助我们。
 
 ### Pokemon number
+
 ```rs
 #[cfg(test)]
 impl PokemonNumber {
@@ -392,7 +439,9 @@ impl PokemonNumber {
     }
 }
 ```
+
 ### Pokemon name
+
 ```rs
 #[cfg(test)]
 impl PokemonName {
@@ -409,7 +458,9 @@ impl PokemonName {
     }
 }
 ```
+
 ### Pokemon types
+
 ```rs
 #[cfg(test)]
 impl PokemonTypes {
@@ -422,7 +473,9 @@ impl PokemonTypes {
     }
 }
 ```
+
 接下来让我们在用例测试中使用这些测试值。首先添加一个函数，以便我们更轻松的模拟一个请求：
+
 ```rs
 #[cfg(test)]
 mod tests {
@@ -439,7 +492,9 @@ mod tests {
     }
 }
 ```
+
 接下来就是各种的测试：
+
 ```rs
 #[test]
 fn it_should_return_a_bad_request_error_when_request_is_invalid() {
@@ -501,4 +556,5 @@ fn it_should_return_the_pokemon_otherwise() {
 ```
 
 ## 总结
+
 我们终于完成了这个漫长的重构，希望一切顺利 :) 我保证，下次我们将去实现一些新的用例！

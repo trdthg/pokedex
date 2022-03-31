@@ -2,6 +2,9 @@ use crate::repositories::pokemon::Repository;
 use dialoguer::{theme::ColorfulTheme, Input, MultiSelect, Select};
 use std::sync::Arc;
 mod create_pokemon;
+mod delete_pokemon;
+mod fetch_all_pokemons;
+mod fetch_pokemon;
 
 pub fn run(repo: Arc<dyn Repository>) {
     loop {
@@ -23,8 +26,11 @@ pub fn run(repo: Arc<dyn Repository>) {
         };
 
         match index {
-            4 => break,
+            0 => fetch_all_pokemons::run(repo.clone()),
+            1 => fetch_pokemon::run(repo.clone()),
             2 => create_pokemon::run(repo.clone()),
+            3 => delete_pokemon::run(repo.clone()),
+            4 => return,
             _ => continue,
         };
     }
