@@ -10,6 +10,8 @@ use super::Status;
 #[derive(Serialize)]
 struct Response {
     number: u16,
+    name: String,
+    types: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -20,7 +22,6 @@ struct Request {
 }
 
 pub fn serve(repo: Arc<dyn Repository>, req: &rouille::Request) -> rouille::Response {
-    println!("{req:?}");
     let req: domain::create_pokemon::Request = match rouille::input::json_input::<Request>(req) {
         Ok(req) => domain::create_pokemon::Request {
             number: req.number,
@@ -29,13 +30,22 @@ pub fn serve(repo: Arc<dyn Repository>, req: &rouille::Request) -> rouille::Resp
         },
         _ => return rouille::Response::from(Status::BadRequest),
     };
+    // rouille::Response::from(Status::InternalServerError)
     match domain::create_pokemon::execute(repo, req) {
-        domain::create_pokemon::Response::Ok(number) => {
-            rouille::Response::json(&Response { number })
+        Ok(domain::create_pokemon::Response {
+            number,
+            name,
+            types,
+        }) => rouille::Response::json(&Response {
+            number,
+            name,
+            types,
+        }),
+        Err(domain::create_pokemon::Error::BadRequest) => {
+            rouille::Response::from(Status::BadRequest)
         }
-        domain::create_pokemon::Response::BadRequest => rouille::Response::from(Status::BadRequest),
-        domain::create_pokemon::Response::Conflict => rouille::Response::from(Status::Conflict),
-        domain::create_pokemon::Response::Error => {
+        Err(domain::create_pokemon::Error::Conflict) => rouille::Response::from(Status::Conflict),
+        Err(domain::create_pokemon::Error::Unknown) => {
             rouille::Response::from(Status::InternalServerError)
         }
     }
