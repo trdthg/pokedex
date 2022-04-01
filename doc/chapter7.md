@@ -293,7 +293,9 @@ fn fetch_type_rows(lock: &MutexGuard<'_, Connection>, number: u16) -> Result<Vec
     // code will go here
 }
 ```
+
 准备查询语句，带着参数进行查询：
+
 ```rs
 let mut stmt = match lock.prepare("select name from types where pokemon_number = ?") {
     Ok(stmt) => stmt,
@@ -305,7 +307,9 @@ let mut rows = match stmt.query([number]) {
     _ => return Err(()),
 };
 ```
+
 依次从结果中提取出类型：
+
 ```rs
 let mut type_rows = vec![];
 
@@ -317,9 +321,11 @@ while let Ok(Some(row)) = rows.next() {
 }
 Ok(type_rows)
 ```
+
 Aaaand，繁荣完成！这两个功能现在都实现了。使用它们去实现 fetch_one 和 fetch_all 会更容易:)
 
 ## 查询一只宝可梦
+
 我们会一步一步来，首先处理下面的方法：
 
 ```rs
@@ -327,7 +333,9 @@ fn fetch_one(&self, number: PokemonNumber) -> Result<Pokemon, FetchOneError> {
     // code will go here
 }
 ```
+
 首先，我们要先拿到锁，并通过调用之前的辅助函数去查询宝可梦：
+
 ```rs
 let lock = match self.connection.lock() {
     Ok(lock) => lock,
@@ -339,7 +347,9 @@ let mut pokemon_rows = match Self::fetch_pokemon_rows(&lock, Some(u16::from(numb
     _ => return Err(FetchOneError::Unknown),
 };
 ```
+
 当查询结果为空时，我们就返回 NotFound，否则返回查询结果的第一个：
+
 ```rs
 ...
 if pokemon_rows.is_empty() {
@@ -348,14 +358,18 @@ if pokemon_rows.is_empty() {
 
 let pokemon_row = pokemon_rows.remove(0);
 ```
+
 不错。现在我们去查询宝可梦类型：
+
 ```rs
 let type_rows = match Self::fetch_type_rows(&lock, pokemon_row.0) {
     Ok(type_rows) => type_rows,
     _ => return Err(FetchOneError::Unknown),
 };
 ```
+
 我们已经有口袋妖怪的编号、名称和类型。总是时候把他们封装为 Response 了：
+
 ```rs
 ...
 match (
@@ -367,13 +381,17 @@ match (
     _ => Err(FetchOneError::Unknown),
 }
 ```
+
 ## 查询所有宝可梦
+
 ```rs
 fn fetch_all(&self) -> Result<Vec<Pokemon>, FetchAllError> {
     // code will go here
 }
 ```
+
 首先获取锁并查询所有宝可梦：
+
 ```rs
 let lock = match self.connection.lock() {
     Ok(lock) => lock,
@@ -385,7 +403,9 @@ let pokemon_rows = match Self::fetch_pokemon_rows(&lock, None) {
     _ => return Err(FetchAllError::Unknown),
 };
 ```
+
 你可以注意到，我们把 number 参数设置为了空，对每个宝可梦，我们会单独查询它的类型，最终封装为一个列表：
+
 ```rs
 ...
 let mut pokemons = vec![];
@@ -410,7 +430,9 @@ for pokemon_row in pokemon_rows {
 
 Ok(pokemons)
 ```
+
 ## 插入一只宝可梦
+
 ```rs
 fn insert(
     &self,
@@ -421,14 +443,19 @@ fn insert(
     // code will go here
 }
 ```
+
 首先，我们从连接中获取锁：
+
 ```rs
 let mut lock = match self.connection.lock() {
     Ok(lock) => lock,
     _ => return Err(InsertError::Unknown),
 };
 ```
-接着我们创建了一个事务。为什么我们没有直接执行一条命令？因为我们需要向 pokemons 中插入一只宝可梦，同时要想 types 中1插入它的类型。如果这两次插入有一个失败了，我们希望这次插入能够成功回滚。使用事务时，你需要先创建 SQL 语句，之后提交。如果有错误发生rusqlite 会自动完成回滚。
+
+接着我们创建了一个事务。为什么我们没有直接执行一条命令？因为我们需要向 pokemons 中插入一只宝可梦，同时要想 types
+中1插入它的类型。如果这两次插入有一个失败了，我们希望这次插入能够成功回滚。使用事务时，你需要先创建 SQL 语句，之后提交。如果有错误发生rusqlite
+会自动完成回滚。
 
 ```rs
 let transaction = match lock.transaction() {
@@ -436,7 +463,9 @@ let transaction = match lock.transaction() {
     _ => return Err(InsertError::Unknown),
 };
 ```
+
 现在我们要向事务中添加第一条命令。我们要插入一只宝可梦。如果已经存在，我们希望函数执行失败并返回一个错误：
+
 ```rs
 use rusqlite::{..., Error::SqliteFailure, params};
 
@@ -456,9 +485,11 @@ match transaction.execute(
     _ => return Err(InsertError::Unknown),
 };
 ```
+
 在这里，我们使用 rusqlite 返回的错误信息来检查错误是否是由于冲突引起的。现在宝可梦的插入逻辑完成了。
 
 接下来要处理插入类型。我们需要为 PokemonTypes 参数中的每种类型都分别执行依次插入操作：
+
 ```rs
 ...
 for _type in Vec::<String>::from(types.clone()) {
@@ -470,7 +501,9 @@ for _type in Vec::<String>::from(types.clone()) {
     }
 }
 ```
+
 现在，我们可以提交这个事物，并返回响应如果一切正常的话。
+
 ```rs
 ...
 match transaction.commit() {
@@ -486,12 +519,14 @@ fn delete(&self, number: PokemonNumber) -> Result<(), DeleteError> {
     // code will go here
 }
 ```
+
 ```rs
 let lock = match self.connection.lock() {
     Ok(lock) => lock,
     _ => return Err(DeleteError::Unknown),
 };
 ```
+
 ```rs
 match lock.execute(
     "delete from pokemons where number = ?",
@@ -502,8 +537,425 @@ match lock.execute(
     _ => Err(DeleteError::Unknown),
 }
 ```
-这里需要注意两点：第一，我们不需要再关注删除宝可梦类型信息，因为再创建数据表时我们已经设置了 `on delete cascade` 让 sqlite 去自动处理。第二，我们使用删除返回的删除行数去判断是否删除成功，如果数量是 0，就表示没有一行数据被成功删除。
 
-你现在应该能使用你的 SQLite 数据库作为存储库了，而且能通过 CLI 和 HTTP API 两种方式访问。你可以尝试从 CLI 创建一些新的宝可梦，并从 HTTP API 去获取他们 :)
+这里需要注意两点：第一，我们不需要再关注删除宝可梦类型信息，因为再创建数据表时我们已经设置了 `on delete cascade` 让 sqlite
+去自动处理。第二，我们使用删除返回的删除行数去判断是否删除成功，如果数量是 0，就表示没有一行数据被成功删除。
 
-## 插曲
+你现在应该能使用你的 SQLite 数据库作为存储库了，而且能通过 CLI 和 HTTP API 两种方式访问。你可以尝试从 CLI 创建一些新的宝可梦，并从
+HTTP API 去获取他们 :)
+
+## 小插曲
+
+🙀 我看到客户了，他正朝着我这边来。
+
+- 你好 Alexis！
+- 你好 客户！我已经实现了一个长期保存的存储库，它将数据存储在计算机的硬盘上。
+- 哦，太好了！虽然我知道了我们将使用的什么存储库。
+- 不错，速度很快。是 PostgreSQL 吗？还是 Mysql？
+- 都不是，我们的公司是水平可拓展的。
+- 嗯，这让我想起了一个恐怖故事。那好吧，你们公司打算使用什么技术？
+- 他们想使用 Airtable，类似于 Excel 但是是在线的。
+- 哦... 让我看看我能做的。
+
+## 使用 Airtable 实现弹性数据库
+
+好吧，现在我们必须创建另一个存储库了。生活就是如此。所以我们现在可以去 Airtable
+网站看看它是怎么工作的。你必须创建一个账户，并且新建一个工作区。在这个工作区里，你应该有一个默认的工作表。把他重命名为
+pokemons。你可以把表格的列改为下面的：
+
+<!-- 6hp?5LcA9K*8y,Y -->
+
+```
+number:
+    选择 Number 类型
+    选择 Integer 子类型
+    关闭允许负数
+name:
+    选择 Single line text 类型
+types:
+    选择 Multiple select 类型
+    再选项里添加 Electric 和 Fire
+```
+
+好消息，我们想在能用一张数据表去为我们的数据建模了 :)
+
+现在我们需要知道我们的程序怎样和 Airtable 进行交互。让我们去阅读一下 API 文档。在那里你应该能看到 Airtable
+现在支持的客户端，撰写本文时并没有 Rust 的，所以我们要尝试使用它们的 HTTP API。我们的程序现在需要一个 HTTP 客户端，我们在这里要使用
+`ureq`:
+
+```toml
+[dependencies]
+ureq = { version = "2.2.0", features = ["json"] }
+```
+
+开启 `json` 特性能够帮我们把 HTTP 响应转化为 结构体( 感谢 serde )。但是再我们实现存储库之前，我们要再程序开始前让用户能够选择使用
+Airtable 作为存储库。
+
+### 添加启动开关
+
+首先让我们看一下如何使用 API。这里是文档给出的一个请求示例：
+
+```
+curl https://api.airtable.com/v0/<WORKSPACE_ID>/pokemons -H "Authorization: Bearer <API_KEY>"
+```
+
+好的，所以我们的程序需要两个参数 `api_key` 和 `workspace_id`：
+
+```rs
+fn main() {
+    let matches = App::new(crate_name!())
+        .version(crate_version!())
+        .author(crate_authors!())
+        .arg(Arg::with_name("cli").long("cli").help("Runs in CLI mode"))
+        .arg(Arg::with_name("sqlite").long("sqlite").value_name("PATH"))
+        .arg(
+            Arg::with_name("airtable")
+                .long("airtable")
+                .value_names(&["API_KEY", "WORKSPACE_ID"]),
+        )
+        .get_matches();
+}
+```
+
+现在，运行 `pokedex --airtable <API_KEY> <WORKSPACE_ID>` 就能设置 Airtable 作为存储库，使用 cargo
+run 启动的话，你可以输入 `cargo run -- --airtable <API_KEY> <WORKSPACE_ID>`。可以使用 `--help`
+检查是否生效：
+
+```
+OPTIONS:
+        --airtable <API_KEY> <WORKSPACE_ID>
+```
+
+接下来，让我们更新 build_repo 函数，使它能够创建一个 AirtableRepository：
+
+```rs
+use clap::{..., Values};
+use repositories::pokemon::{AirtableRepository, ...};
+
+fn main() {
+    ...
+    let repo = build_repo(matches.value_of("sqlite"), matches.values_of("airtable"));
+    ...
+}
+
+fn build_repo(sqlite_value: Option<&str>, airtable_values: Option<Values>) -> Arc<dyn Repository> {
+    if let Some(values) = airtable_values {
+        if let [api_key, workspace_id] = values.collect::<Vec<&str>>()[..] {
+            match AirtableRepository::try_new(api_key, workspace_id) {
+                Ok(repo) => return Arc::new(repo),
+                _ => panic!("Error while creating airtable repo"),
+            }
+        }
+    }
+    ...
+}
+```
+
+所以现在如果设置了 `--airtable` 标志，我们将使用 Airtable 作为存储库。如果设置了 `--sqlite` 标志，我们将使用
+SQLite。否则我们使用内存存储库。现在让我们实现存储库；）
+
+### 实现存储库
+
+我将在 `repositories/pokemon.rs` 中添加
+`AirtableRepository`。像以前一样，您可以将其放在新的文件中。让我们首先创建结构体：
+
+```rs
+pub struct AirtableRepository {
+    url: String,
+    auth_header: String,
+}
+```
+
+我们依然需要实现 try_new 函数。我们将使用 workspace_id 创建 url，使用 api_key 创建
+auth_header。接着还要发出请求以确保我们可以连接到我们的数据库：
+
+```rs
+impl AirtableRepository {
+    pub fn try_new(api_key: &str, workspace_id: &str) -> Result<Self, ()> {
+        let url = format!("https://api.airtable.com/v0/{}/pokemons", workspace_id);
+        let auth_header = format!("Bearer {}", api_key);
+
+        if let Err(_) = ureq::get(&url).set("Authorization", &auth_header).call() {
+            return Err(());
+        }
+
+        Ok(Self { url, auth_header })
+    }
+}
+```
+
+接着我们要为它实现 Repository Trait：
+
+```rs
+impl Repository for AirtableRepository {
+    fn insert(
+        &self,
+        number: PokemonNumber,
+        name: PokemonName,
+        types: PokemonTypes,
+    ) -> Result<Pokemon, InsertError> {
+        Err(InsertError::Unknown)
+    }
+
+    fn fetch_all(&self) -> Result<Vec<Pokemon>, FetchAllError> {
+        Err(FetchAllError::Unknown)
+    }
+
+    fn fetch_one(&self, number: PokemonNumber) -> Result<Pokemon, FetchOneError> {
+        Err(FetchOneError::Unknown)
+    }
+
+    fn delete(&self, number: PokemonNumber) -> Result<(), DeleteError> {
+        Err(DeleteError::Unknown)
+    }
+}
+```
+
+#### 辅助函数
+
+你现在应该已经习惯了，这次我们只需要一个辅助函数。这个函数能让我们从 Airtable 中获取某一行或者多行数据。它的参数数 &self 和 一个可选的
+number。它的返回值可能是个json或者是个错误。它依然是个私有的函数，再 impl AirtableRepository 块中实现。有了 serde
+我们能将 json 直接转化为结构体，首先我们需要定义对应的结构体：
+
+```rs
+#[derive(Deserialize)]
+struct AirtableJson {
+    records: Vec<AirtableRecord>,
+}
+
+#[derive(Deserialize)]
+struct AirtableRecord {
+    id: String,
+    fields: AirtableFields,
+}
+
+#[derive(Deserialize)]
+struct AirtableFields {
+    number: u16,
+    name: String,
+    types: Vec<String>,
+}
+```
+
+接着是辅助函数：
+
+```rs
+fn fetch_pokemon_rows(&self, number: Option<u16>) -> Result<AirtableJson, ()> {
+    // code will go here
+}
+```
+
+第一步要根据用户传来的number去创建请求链接：
+
+```rs
+let url = match number {
+    Some(number) => format!("{}?filterByFormula=number%3D{}", self.url, number),
+    None => format!("{}?sort%5B0%5D%5Bfield%5D=number", self.url),
+};
+```
+
+请求参数看起来稍微有一点奇怪。第一个是依靠 number 进行过滤，第二个是根据 number 对数据排序。现在我们能用 ureq 尝试发出请求了：
+
+```rs
+let res = match ureq::get(&url)
+    .set("Authorization", &self.auth_header)
+    .call()
+{
+    Ok(res) => res,
+    _ => return Err(()),
+};
+```
+
+我们在返回值中接收到了json，接着我们把它转换为 AirtableJson:
+
+```rs
+match res.into_json::<AirtableJson>() {
+    Ok(json) => Ok(json),
+    _ => Err(()),
+}
+```
+
+辅助函数完成了 :)
+
+#### 查询一个宝可梦
+
+```rs
+fn fetch_one(&self, number: PokemonNumber) -> Result<Pokemon, FetchOneError> {
+    // code will go here
+}
+```
+
+首先，我们让使用我们之前实现的函数获取 json：
+
+```rs
+let mut json = match self.fetch_pokemon_rows(Some(u16::from(number.clone()))) {
+    Ok(json) => json,
+    _ => return Err(FetchOneError::Unknown),
+};
+```
+
+现在，如果 json 记录为空，则意味着我们想要的 Pokemon 不存在。所以我们会返回一个错误。否则，我们取第一条记录：
+
+```rs
+...
+if json.records.is_empty() {
+    return Err(FetchOneError::NotFound);
+}
+
+let record = json.records.remove(0);
+```
+
+最后，我们需要做的是把这条记录转换为宝可梦：
+
+```rs
+...
+match (
+    PokemonNumber::try_from(record.fields.number),
+    PokemonName::try_from(record.fields.name),
+    PokemonTypes::try_from(record.fields.types),
+) {
+    (Ok(number), Ok(name), Ok(types)) => Ok(Pokemon::new(number, name, types)),
+    _ => Err(FetchOneError::Unknown),
+}
+```
+
+#### 获取所有口袋妖怪
+
+```rs
+fn fetch_all(&self) -> Result<Vec<Pokemon>, FetchAllError> {
+    // code will go here
+}
+```
+
+首先，让我们使用辅助函数获取 json：
+
+```rs
+let json = match self.fetch_pokemon_rows(None) {
+    Ok(json) => json,
+    _ => return Err(FetchAllError::Unknown),
+};
+```
+
+这一次，我没有给辅助函数提供 number。现在让我们将这些记录转换为 Pokemons 并返回：
+
+```rs
+...
+let mut pokemons = vec![];
+
+for record in json.records.into_iter() {
+    match (
+        PokemonNumber::try_from(record.fields.number),
+        PokemonName::try_from(record.fields.name),
+        PokemonTypes::try_from(record.fields.types),
+    ) {
+        (Ok(number), Ok(name), Ok(types)) => {
+            pokemons.push(Pokemon::new(number, name, types))
+        }
+        _ => return Err(FetchAllError::Unknown),
+    }
+}
+
+Ok(pokemons)
+```
+
+#### 插入一只宝可梦
+
+```rs
+fn insert(
+    &self,
+    number: PokemonNumber,
+    name: PokemonName,
+    types: PokemonTypes,
+) -> Result<Pokemon, InsertError> {
+    // code will go here
+}
+```
+
+Airtable 本身有一个问题：AirtableRecord 的主键并不能保证数据的唯一性。或许你已经注意到了 AirtableRecord 中的 id 字段
+:) 因此，我们不能尝试插入记录并等待返回错误，Airtable
+会负责在表中添加行。然后我们要做的是首先尝试获取相同编号的口袋妖怪，如果此请求的结果不为空，则返回错误。
+
+```rs
+let json = match self.fetch_pokemon_rows(Some(u16::from(number.clone()))) {
+    Ok(json) => json,
+    _ => return Err(InsertError::Unknown),
+};
+
+if !json.records.is_empty() {
+    return Err(InsertError::Conflict);
+}
+```
+
+现在我们已经做到了，我们能保证没有记录共享相同的 number，所以我们可以插入我们的口袋妖怪。为此，我们需要创建一个 json 请求：
+
+```rs
+...
+let body = ureq::json!({
+    "records": [{
+        "fields": {
+            "number": u16::from(number.clone()),
+            "name": String::from(name.clone()),
+            "types": Vec::<String>::from(types.clone()),
+        },
+    }],
+});
+```
+
+最后，我们要带上 body 发出请求，并在成功时返回 Pokemon：
+
+```rs
+...
+if let Err(_) = ureq::post(&self.url)
+    .set("Authorization", &self.auth_header)
+    .send_json(body)
+{
+    return Err(InsertError::Unknown);
+}
+
+Ok(Pokemon::new(number, name, types))
+```
+
+#### 删除一只宝可梦
+
+```rs
+fn delete(&self, number: PokemonNumber) -> Result<(), DeleteError> {
+    // code will go here
+}
+```
+
+和插入时一样，我们必须首先尝试查询与我们传递的 number 相同的记录。当记录为空时，我们会返回一个错误，我们不能删除不存在的记录 :)
+否则，我们将拿到第一条记录。
+
+```rs
+let mut json = match self.fetch_pokemon_rows(Some(u16::from(number.clone()))) {
+    Ok(json) => json,
+    _ => return Err(DeleteError::Unknown),
+};
+
+if json.records.is_empty() {
+    return Err(DeleteError::NotFound);
+}
+
+let record = json.records.remove(0);
+```
+
+现在，我们将使用记录的 id 字段来删除记录：
+
+```rs
+...
+match ureq::delete(&format!("{}/{}", self.url, record.id))
+    .set("Authorization", &self.auth_header)
+    .call()
+{
+    Ok(_) => Ok(()),
+    _ => Err(DeleteError::Unknown),
+}
+```
+
+## 总结
+
+你现在应该能使用 内存，Airtable，或者是一个 SQLite 数据库作为程序的存储库。而且你能通过 CLI 和 HTTP API 两种方式去操作 :D
+
+那是本系列的最后一篇文章。 感谢您一直看到这里 :) 我希望这些文章对您有用。
+
+该代码依然在 [github](https://github.com/alexislozano/pokedex/tree/article-7) 上。

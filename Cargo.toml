@@ -11,3 +11,4 @@ serde = { version = "1.0", features = ["derive"] }
 clap = { version = "3.1", features = ["derive"] }
 dialoguer = "0.10"
 rusqlite = "0.27"
+ureq = { version = "2.4", features = ["json"] }

@@ -1,5 +1,7 @@
+mod airtable;
 mod memory;
 mod sqlite;
+pub use airtable::AirtableRepository;
 pub use memory::InMemoryRepository;
 pub use sqlite::SqliteRepository;
 use std::sync::Mutex;
