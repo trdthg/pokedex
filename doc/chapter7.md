@@ -656,6 +656,8 @@ SQLite。否则我们使用内存存储库。现在让我们实现存储库；�
 
 ### 实现存储库
 
+> 注意：网站的 API 经常发生变动，如果下面的测试失败了，请到[官网](https://airtable.com/api/meta)查看最新的 API。
+
 我将在 `repositories/pokemon.rs` 中添加
 `AirtableRepository`。像以前一样，您可以将其放在新的文件中。让我们首先创建结构体：
 
