@@ -1,4 +1,12 @@
-# 2021-09-02 - Rust 六边形架构 #4 - Refactoring
+> 原文链接: https://alexis-lozano.com/hexagonal-architecture-in-rust-4/
+>
+> 翻译：[trdthg](https://github.com/trdthg)
+>
+> 选题：[trdthg](https://github.com/trdthg)
+>
+> 本文由 [Rustt](https://Rustt.org) 翻译，[StudyRust](https://studyrust.org) 荣誉推出
+
+# 2021-09-02 - Rust 六边形架构 #4 - 重构
 
 这篇文章是下面系列的一部分
 
@@ -10,7 +18,7 @@
 - [Hexagonal architecture in Rust #6 - CLI](https://alexis-lozano.com/hexagonal-architecture-in-rust-6/)
 - [Hexagonal architecture in Rust #7 - Long-lived repositories](https://alexis-lozano.com/hexagonal-architecture-in-rust-7/)
 
-嗨，又是我！起初，我想实现我们仍然需要处理的剩余 Usecase。但这将会是下一次的内容。今天我们将做一些重构 :)
+嗨，又是我！起初，我想实现我们仍然需要处理的剩余的用例。但这将会是下一次的内容。今天我们将做一些重构 :)
 
 ## 开始之前
 
@@ -40,15 +48,13 @@ impl InMemoryRepository {
 
 让我们现在进行重构 :)
 
-## 使用 Result 替换自定义枚举
+## 使用 `Result` 替换自定义枚举
 
-_Use Result instead of custom enums_
+之前我们使用自定义枚举作为用例和 存储库 的返回值，现在把他们重构为 Result。
 
-之前我们使用自定义枚举作为 Usecase 和 存储库 的返回值，现在把他们重构为 Result。
+### 更改用例的返回值类型
 
-### 更改 Usecase 的返回类型
-
-首先，我们将 Usecase 的返回值暂时设置为 500 以方便测试、
+首先，我们将用例的返回值暂时设置为 500 以方便测试、
 
 ```rs
 pub fn serve(repo: Arc<dyn Repository>, req: &rouille::Request) -> rouille::Response {
@@ -63,7 +69,7 @@ pub fn serve(repo: Arc<dyn Repository>, req: &rouille::Request) -> rouille::Resp
 }
 ```
 
-现在我们将测试的结构哦修改为 Result 类型：
+现在我们将测试的返回值修改为 Result 类型：
 
 ```rs
     #[test]
@@ -104,7 +110,7 @@ pub fn serve(repo: Arc<dyn Repository>, req: &rouille::Request) -> rouille::Resp
 }
 ```
 
-接着再修改 Usecase，把它的返回值修改为 Result ：
+接着再修改用例，把它的返回值修改为 Result ：
 
 ```rs
 pub fn execute(repo: Arc<dyn Repository>, req: Request) -> Result<u16, Error> {
@@ -148,7 +154,7 @@ Usecase 修改完成，接下来我们去处理 Reposity
 
 ### 更改 Repository 的返回类型
 
-Repository 没有测试，所以我们从修改 Usecase 调用 repo 的返回值开始：
+Repository 没有测试，所以我们从修改用例调用 repo 的返回值开始：
 
 ```rs
 use crate::repositories::pokemon::{InsertError, ...};
@@ -166,8 +172,8 @@ pub fn execute(repo: Arc<dyn Repository>, req: Request) -> Result<u16, Error> {
 }
 ```
 
-在测试 Confilt 时，您应该将 `.ok()` 添加到存储库 Insert 。 现在让我们在 repositories/pokemon.rs 中删除
-Insert 并创建 InsertError：
+在宝可梦编号冲突的测试时，您应该将 `.ok()` 添加到存储库 insert操作之后 。 现在让我们在 _repositories/pokemon.rs_
+中删除 `Insert` 并创建 `InsertError`：
 
 ```rs
 pub enum InsertError {
@@ -176,7 +182,7 @@ pub enum InsertError {
 }
 ```
 
-最后在更改 Repository Trait 和 InMemoryRepository 的返回值类型即可：
+最后在更改 `Repository` Trait 和 `InMemoryRepository` 的返回值类型即可：
 
 ```rs
 pub trait Repository: Send + Sync {
@@ -214,14 +220,14 @@ impl Repository for InMemoryRepository {
 }
 ```
 
-## 填加一个新的 Usecase
+## 填加一个新的用例
 
 在常规的 HTTP API 中，每次创建一个新的对象，我通常会把这个对象在返回回去。特别是当返回的对象中包含一切前端没有传来的字段。比如 `create_at`
 等由存储库添加的字段。
 
 首先，我需要你像我们一开始那样暂时注释掉 `api/create_pokemon.rs`。 以便于我们专注于测试。
 
-在 `domain/create_pokemon.rs` 中添加一个新的测试：
+在 _domain/create\_pokemon.rs_ 中添加一个新的测试：
 
 ```rs
 #[test]
@@ -250,7 +256,7 @@ fn it_should_return_the_pokemon_number_otherwise() {
 }
 ```
 
-同时创建一个 Response 结构体
+同时创建一个 `Response` 结构体
 
 ```rs
 pub struct Response {
@@ -260,7 +266,7 @@ pub struct Response {
 }
 ```
 
-接下来，我们将修改 `execute` 函数，在插入成功时应该返回 Pokemon 的所有字段：
+接下来，我们将修改 `execute` 函数，在插入成功时应该返回 `Pokemon` 的所有字段：
 
 ```rs
 use crate::domain::entities::{Pokemon, ...};
@@ -285,7 +291,7 @@ pub fn execute(repo: Arc<dyn Repository>, req: Request) -> Result<Response, Erro
 }
 ```
 
-在 insert 只执行成功后，直接返回一个 Pokemon 结构体：
+在 `insert` 执行成功后，直接返回一个 `Pokemon` 结构体：
 
 ```rs
 pub trait Repository: Send + Sync {
@@ -312,7 +318,7 @@ impl Repository for InMemoryRepository {
 }
 ```
 
-为了能够使用 `pokemon.clone()` 需要为 Pokemon 实现 `Clone` Trait：
+为了使 `pokemon.clone()` 能够正常工作，我们需要为 `Pokemon` 实现 `Clone` Trait：
 
 ```rs
 #[derive(Clone)]
@@ -328,7 +334,7 @@ enum PokemonType {
 pub struct Pokemon {
 ```
 
-现在存储库的插入逻辑已经完成，usecase 希望能够直接拿到 Pokemon 的 name 和 types 字段，我们需要把这两个字端也转为公开的：
+现在存储库的插入逻辑已经完成，用例希望能够直接拿到 `Pokemon` 的 `name` 和 `types` 字段，我们需要把这两个字端也转为公开的：
 
 ```rs
 pub struct Pokemon {
@@ -338,7 +344,7 @@ pub struct Pokemon {
 }
 ```
 
-接着，我们需要为 Response 实现类型转换 从 `PokemonNumber` 到 `u16`、从 `PokemonName` 转换为
+接着，我们需要为 `Response` 实现类型转换， 从 `PokemonNumber` 转换为 `u16`、从 `PokemonName` 转换为
 `String`、从 `PokemonTypes` 转换为 `Vec<String>`:
 
 ```rs
@@ -408,7 +414,7 @@ pub fn serve(repo: Arc<dyn Repository>, req: &rouille::Request) -> rouille::Resp
 }
 ```
 
-cargo run 之后，再次向 server 发送数据：
+`cargo run` 之后，再次向 server 发送数据：
 
 ```json
 {
@@ -422,10 +428,10 @@ cargo run 之后，再次向 server 发送数据：
 
 ## 创建一些测试值
 
-你喜欢在测试过程中使用 PokemonName::try_from(String::from("Pikachu")).unwrap()
-之类的东西吗？我也不。让我们在 domain/entities.rs 中创建一些函数来帮助我们。
+你喜欢在测试过程中使用 `PokemonName::try_from(String::from("Pikachu")).unwrap()`
+之类的东西吗？让我们在 _domain/entities.rs_ 中创建一些函数:
 
-### Pokemon number
+### 宝可梦编号
 
 ```rs
 #[cfg(test)]
@@ -440,7 +446,7 @@ impl PokemonNumber {
 }
 ```
 
-### Pokemon name
+### 宝可梦名字
 
 ```rs
 #[cfg(test)]
@@ -459,7 +465,7 @@ impl PokemonName {
 }
 ```
 
-### Pokemon types
+### 宝可梦类型
 
 ```rs
 #[cfg(test)]
@@ -474,7 +480,7 @@ impl PokemonTypes {
 }
 ```
 
-接下来让我们在用例测试中使用这些测试值。首先添加一个函数，以便我们更轻松的模拟一个请求：
+接下来让我们在用例测试中使用这些测试值。首先为 `Request` 添加一个测试用的 `new` 方法，以便我们更轻松的模拟一个请求：
 
 ```rs
 #[cfg(test)]
@@ -558,3 +564,5 @@ fn it_should_return_the_pokemon_otherwise() {
 ## 总结
 
 我们终于完成了这个漫长的重构，希望一切顺利 :) 我保证，下次我们将去实现一些新的用例！
+
+代码可以在 [Github](https://github.com/alexislozano/pokedex/tree/article-4) 上查看

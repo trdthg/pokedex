@@ -1,3 +1,11 @@
+> 原文链接: https://alexis-lozano.com/hexagonal-architecture-in-rust-6/
+>
+> 翻译：[trdthg](https://github.com/trdthg)
+>
+> 选题：[trdthg](https://github.com/trdthg)
+>
+> 本文由 [Rustt](https://Rustt.org) 翻译，[StudyRust](https://studyrust.org) 荣誉推出
+
 # 2021-10-09 - Rust 六边形架构 #6 - CLI
 
 嘿，好久不见！上次，我们实现了剩余的用例，并将它们连接到我们的 API。现在，我想添加另一种方式来使用我们的程序。我们将使用 CLI。 CLI 是
@@ -6,7 +14,7 @@ Command Line Interface (命令行接口) 的意思，它只是一个缩写词，
 ## 搭建脚手架
 
 构建 CLI 意味着我们需要在项目中添加新的依赖和一个新文件夹。让我们从添加依赖开始。 我们需要一种方法，再运行之前需要提示用户是运行 CLI 还是 HTTP
-API。我们将使用 clap 添加命令行开关让用户选择启动方式，同时还会使用 dialoguer 去轻松创建提示信息。
+API。我们将使用 `clap` 添加命令行开关让用户选择启动方式，同时还会使用 `dialoguer` 去创建提示信息。
 
 打开 Cargo.toml，并添加：
 
@@ -17,7 +25,7 @@ clap = "2.33.3"
 dialoguer = "0.8.0"
 ```
 
-当你再读这篇文章时可以将依赖换为最新的。现在让我们添加一些命令行开关，打开 `main.rs`:
+当你再读这篇文章时可以将依赖换为最新的。现在让我们添加一些命令行开关，打开 _main.rs_:
 
 ```rs
 #[macro_use]
@@ -42,8 +50,8 @@ fn main() {
 }
 ```
 
-所以，首先我们创建了存储库。然后我们创建一个处理 CLI 的 clap 应用程序。如果在运行程序时添加 --cli 标志，程序现在将崩溃。如果没有添加，就会运行
-API。 正如我之前所说，clap 能让我们快速创建一个 CLI。您可以通过运行来尝试：
+所以，首先我们创建了存储库。然后我们创建一个处理 CLI 的 clap 应用程序。如果在运行程序时添加 `--cli` 标志，程序现在将
+panic。如果没有添加，就会运行 API。 正如我之前所说，`clap` 能让我们快速创建一个 CLI。您可以通过运行来尝试：
 
 ```rs
 cargo run -- --help
@@ -62,14 +70,14 @@ FLAGS:
 
 非常不错是吧 :)
 
-现在我们要把 unreachable!() 替换为 cli::run(repo)。我们现在要创建一个 cli 模块，所有和 cli 相关的代码都会在 cli
-模块里。在 main.rs 里 import cli模块：
+现在我们要把 `unreachable!()` 替换为 `cli::run(repo)`。我们现在要创建一个 `cli` 模块，所有和 cli
+相关的代码都会在该模块里。在 _main.rs_ 里引入模块：
 
 ```rs
 mod cli;
 ```
 
-接着让我们在 src 中创建一个 cli 文件夹，并在其中添加一个 mod.rs 文件。在 cli/mod.rs 中添加以下代码：
+接着让我们创建 _src/cli_ 文件夹，并在其中添加一个 _mod.rs_ 文件。在 _cli/mod.rs_ 中添加以下代码：
 
 ```rs
 use crate::repositories::pokemon::Repository;
@@ -78,10 +86,9 @@ use std::sync::Arc;
 pub fn run(repo: Arc<dyn Repository>) {}
 ```
 
-This won't do anything but at least, it should compile and you should be able to
-run cargo run -- --cli without an issue.
+现在运行 `cargo run -- --cli` 应该不会 panic 了。
 
-Let's now create the prompt loop:
+接着让我们创建一个循环：
 
 ```rs
 use dialoguer::{theme::ColorfulTheme, Select};
@@ -113,7 +120,7 @@ pub fn run(repo: Arc<dyn Repository>) {
 }
 ```
 
-在这里我们列出了所有用户能够运行的命令。如果用户选择 Exit，程序就会退出。否则，程序暂时什么都不会做。别担心，我们马上就会实现其他的命令。
+我们列出了所有用户能够运行的命令。如果用户选择 `Exit`，程序就会退出。否则，程序暂时什么都不会做。别担心，我们马上就会实现其他的命令。
 
 ## 创建一个宝可梦
 
@@ -132,7 +139,7 @@ match index {
 mod create_pokemon;
 ```
 
-好了，在 `cli/create_pokemon.rs` 中填加上对应的函数签名：
+好了，在 _cli/create_pokemon.rs_ 中填加上对应的函数签名：
 
 ```rs
 use crate::repositories::pokemon::Repository;
@@ -153,7 +160,7 @@ pub fn run(repo: Arc<dyn Repository>) {
 }
 ```
 
-接着在 cli/mod.rs 中实现:
+接着在 _cli/mod.rs_ 中实现:
 
 ```rs
 use dialoguer::{..., Input, MultiSelect};
@@ -190,8 +197,8 @@ pub fn prompt_types() -> Result<Vec<String>, ()> {
 
 > 提示：多选框按空格选中
 
-如你所见，所有的提示都可能失败，让我们回到 `cli/create_pokemon.rs`，有了用户的输入信息，我们可以将它封装为 用例中要求的
-Request结构体：
+如你所见，所有的提示都可能失败，让我们回到 _cli/create\_pokemon.rs_，有了用户的输入信息，我们可以将它封装为用例中需要的
+`Request` 结构体：
 
 ```rs
 use crate::domain::create_pokemon;
@@ -211,7 +218,7 @@ pub fn run(repo: Arc<dyn Repository>) {
     };
 ```
 
-当发生输入错误时，我们会退回到主菜单。现在有了 Request 结构体，我们就能调用 创建宝可梦的用例了：
+当发生输入错误时，我们会退回到主菜单。现在有了 `Request` 结构体，我们就能调用创建宝可梦的用例了：
 
 ```rs
 pub fn run(repo: Arc<dyn Repository>) {
@@ -225,7 +232,7 @@ pub fn run(repo: Arc<dyn Repository>) {
 }
 ```
 
-我们处理了所有的错误类型，每种错误都会反馈到用户的终端上。当用例执行成功时，我们会返回一个结果：
+我们处理了所有的错误类型，每种错误都会反馈到用户的终端上。当用例执行成功时，我们会返回一个 `Response`：
 
 ```rs
 #[derive(Debug)]
@@ -264,7 +271,7 @@ Great! First command implemented, let's do the next one!
 
 ## 获取所有宝可梦
 
-现在我们去实现获取所有宝可梦！首先我们在对应的index添加相应的处理函数：
+现在我们去实现获取所有宝可梦！首先我们在对应的 `index` 添加相应的处理函数：
 
 ```rs
 match index {
@@ -418,8 +425,8 @@ pub fn run(repo: Arc<dyn Repository>) {
 
 ## 总结
 
-现在您无需直接发送 HTTP 请求即可在舒适的终端中享受您的 Pokedex :D
-但是你知道我们缺少什么吗？一个真正存储我们的宝可梦的地方。目前，它们只存在于内存中，因此每次我们运行程序时存储库都是空的。从 CLI 创建我们的口袋妖怪然后从
-API 获取它们会很酷 :) 下一篇将是本系列的最后一篇文章：实现一个长期保存的存储库。
+现在您无需直接发送 HTTP 请求即可在终端中享受使用程序 : D
+但是你知道我们缺少什么吗？一个真正存储我们的宝可梦的地方。目前，它们只存在于内存中，因此每次我们运行程序时存储库都是空的。从 CLI 创建我们的宝可梦然后从
+API 获取它们会很酷 : ) 下一篇将是本系列的最后一篇文章：实现一个长期保存的存储库。
 
-代码在 [Dithub](https://github.com/alexislozano/pokedex/tree/article-6) 上
+代码可以在 [Github](https://github.com/alexislozano/pokedex/tree/article-6) 上查看

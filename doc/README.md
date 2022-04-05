@@ -1,7 +1,5 @@
 # Rust 六边形架构
 
-原文：[Hexagonal architecture in Rust](https://alexis-lozano.com/hexagonal-architecture-in-rust-1/)
-
 ## 六边形架构基本介绍
 
 六边形架构，是一种软件设计模式。依照这种架构创建的程序，能够在没有 UI

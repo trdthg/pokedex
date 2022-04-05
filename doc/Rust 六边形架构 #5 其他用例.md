@@ -1,9 +1,17 @@
-# 2021-09-12 - Rust 六边形架构 #5 - Remaining use-cases
+> 原文链接: https://alexis-lozano.com/hexagonal-architecture-in-rust-5/
+>
+> 翻译：[trdthg](https://github.com/trdthg)
+>
+> 选题：[trdthg](https://github.com/trdthg)
+>
+> 本文由 [Rustt](https://Rustt.org) 翻译，[StudyRust](https://studyrust.org) 荣誉推出
+
+# 2021-09-12 - Rust 六边形架构 #5 - 其他用例
 
 上次，我们做了一些重构。不知何故，我们的客户对我们很生气……我的意思是，他应该高兴，代码现在比以前更干净了。
 
-在吃完一块蛋糕之后 (显然，这是我们应得的)，让我们继续实现剩下的 Usecase。这篇文章可能会有点长，但是，嘿，如果你不想阅读这个过程，代码在 github
-上 :) 我们将实现的用例是：
+在吃完一块蛋糕之后 (显然，这是我们应得的)，让我们继续实现剩下的用例。这篇文章可能会有点长，但是，嘿，如果你不想阅读整个过程，代码在 github 上 : )
+我们将实现的用例是：
 
 - 获取所有宝可梦
 - 查询一只宝可梦
@@ -11,7 +19,7 @@
 
 ## 获取所有宝可梦
 
-像往常一样，我们将从测试开始。让我们首先创建一个新的 Usecase 文件：`domain/fetch_all_pokemons.rs`：
+像往常一样，我们将从测试开始。让我们首先创建一个新的用例 文件：_domain/fetch\_all\_pokemons.rs_：
 
 ```rs
 // domain/mod.rs
@@ -20,8 +28,8 @@ pub mod fetch_all_pokemons;
 
 让我们考虑一下这个用例有哪些可能的结果？
 
-- 一切都成功了，我们得到了我们的口袋妖怪
-- 存储库中发生了未知错误，我们无法得到我们的口袋妖怪
+1. 成功了，我们得到了宝可梦
+2. 存储库中发生了未知错误，我们无法得到我们的宝可梦
 
 让我们先从错误案例开始：
 
@@ -45,7 +53,7 @@ mod tests {
 }
 ```
 
-如您所见，我仍然没有写一行代码，只写了测试。当然，现在还不能通过编译，但很快就会时先。这里有两件事很有趣：
+如您所见，我仍然没有写一行代码，只写了测试。当然，现在还不能通过编译。这里有两件事很有趣：
 
 - 这里的测试和创建宝可梦那里几乎一样
 - 这里不需要 repo 之外的其他参数
@@ -100,8 +108,8 @@ fn it_should_return_all_the_pokemons_ordered_by_increasing_number_otherwise() {
 }
 ```
 
-在测试里，我以按照 number 递减的顺序插入了口袋妖怪，所以存储库中宝可梦的排序应该是确定的。如您所见，当存储库没有输出错误时，我们应该能从用例中得到一个
-`Vec<Response>`。现在我们要加入 Response，并编写一部分execute函数的内容：
+在测试里，我按照 `number` 递减的顺序插入了宝可梦，所以存储库中宝可梦的排序应该是确定的。当存储库没有输出错误时，我们应该能从用例中得到一个
+`Vec<Response>`。现在我们要为用例加入 `Response`，并编写一部分用例函数的内容：
 
 ```rs
 pub struct Response {
@@ -125,7 +133,7 @@ pub fn execute(repo: Arc<dyn Repository>) -> Result<Vec<Response>, Error> {
 }
 ```
 
-然后再为存储区去添加并实现 fetch_all 方法：
+然后再为存储库添加并实现 `fetch_all` 方法：
 
 ```rs
 pub enum FetchAllError {
@@ -154,15 +162,15 @@ impl Repository for InMemoryRepository {
 }
 ```
 
-为了实现宝可梦按照 number 排序，PokemonNumber 需要实现 `PartialEq`、 `Eq`、`PartialOrd`、`Ord` 这 4
-个 Trait
+为了实现宝可梦按照 `number` 排序，`PokemonNumber` 需要实现 `PartialEq`、 `Eq`、`PartialOrd`、`Ord`
+这 4 个 Trait
 
 ```rs
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PokemonNumber(u16);
 ```
 
-运行 cargo test：
+运行 c`argo test`：
 
 ```
 cargo test
@@ -172,7 +180,7 @@ it_should_return_an_unknown_error_when_an_unexpected_error_happens ... ok
 it_should_return_all_the_pokemons_ordered_by_increasing_number_otherwise ... ok
 ```
 
-我们已经完成了这个用例 :) 现在让我们快速实现 api。在 api/mod.rs 中，添加以下内容：
+我们已经完成了这个用例 :) 现在让我们快速实现 api。在 _api/mod.rs_ 中，添加以下内容：
 
 ```rs
 mod fetch_all_pokemons;
@@ -218,8 +226,8 @@ pub fn serve(repo: Arc<dyn Repository>) -> rouille::Response {
 }
 ```
 
-现在您可以运行 cargo run，并使用你最喜欢的 HTTP 客户端 (curl、postman、...)。通过在 / 上执行 POST
-请求来创建一些口袋妖怪。然后您可以使用您的网络浏览器访问 http://localhost:8000。这是我得到的：
+现在您可以运行 `cargo run`，并使用你最喜欢的 HTTP 客户端 (curl、postman、...)。通过在 `/` 上发送 POST
+请求来创建一些宝可梦。然后您可以使用浏览器访问 http://localhost:8000。这是我得到的：
 
 ```json
 [
@@ -242,21 +250,21 @@ pub fn serve(repo: Arc<dyn Repository>) -> rouille::Response {
 
 ## 查询一只宝可梦
 
-第二个用例！现在我们想通过给系统一个口袋妖怪的编号来获取一个口袋妖怪。让我们创建一个新的用例文件 domain/fetch_pokemon.rs ：
+第二个用例！现在我们想通过给系统一个宝可梦的编号来获取一个宝可梦。让我们创建一个新的用例文件 _domain/fetch\_pokemon.rs_ ：
 
 ```rs
 // domain/mod.rs
 pub mod fetch_pokemon;
 ```
 
-让我们考虑一下用例可能返回什么。
+让我们思考一下用例运行时可能遇到什么情况。
 
 1. 存储库可能会引发未知错误。
 2. 请求参数可能是不合法的。
-3. 用户给定的编号可能对应没有口袋妖怪。
-4. 获得口袋妖怪成功了
+3. 用户给定的编号可能对应没有宝可梦。
+4. 获得宝可梦成功了
 
-让我们从未知错误的测试开始。新建 domain/fetch_pokemon.rs 并添加以下内容：
+让我们从未知错误的测试开始。新建 _domain/fetch\_pokemon.rs_ 并添加以下内容：
 
 ```rs
 use crate::domain::entities::PokemonNumber;
@@ -294,7 +302,7 @@ pub enum Error {
 }
 ```
 
-为了让测试更清晰，我们还为 Request 实现了一个 new 方法，当然只在测试时使用：
+为了让测试更清晰，我们还为 `Request` 实现了一个 `new` 方法，当然只在测试时使用：
 
 ```rs
 #[cfg(test)]
@@ -311,7 +319,7 @@ mod tests {
 }
 ```
 
-最后，在实现一个只用满足这项测试的 execute 函数即可：
+最后，再实现一个只用满足这项测试的 `execute` 函数即可：
 
 ```rs
 use crate::repositories::pokemon::Repository;
@@ -344,7 +352,7 @@ fn it_should_return_a_bad_request_error_when_request_is_invalid() {
 }
 ```
 
-首先，让我们在 PokemonNumber 中创建 bad 函数。在 domain/entities.rs 中添加以下内容：
+首先，让我们在 `PokemonNumber` 中创建 `bad` 函数。在 _domain/entities.rs_ 中添加以下内容：
 
 ```rs
 #[cfg(test)]
@@ -356,7 +364,7 @@ impl PokemonNumber {
 }
 ```
 
-接着，在 Error 中添加 Badrequest 类型与之对应：
+接着，在 `Error` 中添加 `Badrequest` 类型与之对应：
 
 ```rs
 pub enum Error {
@@ -365,7 +373,7 @@ pub enum Error {
 }
 ```
 
-现在已经能够通过编译，但是测试尚且不能通过，实际上，我们的 execute 函数暂时只能返回 Unknown 类型：
+现在已经能够通过编译，但是测试尚且不能通过，实际上，我们的 `execute` 函数暂时只能返回 `Unknown` 类型：
 
 ```rs
 use std::convert::TryFrom;
@@ -378,7 +386,7 @@ pub fn execute(repo: Arc<dyn Repository>, req: Request) -> Result<(), Error> {
 }
 ```
 
-现在两个测试都通过了！我们现在可以进行第三个测试：在存储库中找不到口袋妖怪时，应该返回 NotFound:
+现在两个测试都通过了！我们现在可以进行第三个测试：在存储库中找不到宝可梦时，应该返回 `NotFound`:
 
 ```rs
 #[test]
@@ -395,7 +403,7 @@ fn it_should_return_a_not_found_error_when_the_repo_does_not_contain_the_pokemon
 }
 ```
 
-同样，在 Error 中补充 NotFound错误类型：
+同样，在 `Error` 中补充 `NotFound` 错误类型：
 
 ```rs
 pub enum Error {
@@ -405,7 +413,7 @@ pub enum Error {
 }
 ```
 
-像之前一样，测试没有通过。我们需要在 execute 函数中处理对应的错误类型：
+像之前一样，测试没有通过。我们需要在 `execute` 函数中处理对应的错误类型：
 
 ```rs
 use crate::repositories::pokemon::{FetchOneError, ...};
@@ -417,7 +425,7 @@ Ok(number) => match repo.fetch_one(number) {
 }
 ```
 
-接着在 `repositories/pokemon.rs` 中补充对应的方法和错误类型：
+接着在 _repositories/pokemon.rs_ 中补充对应的方法和错误类型：
 
 ```rs
 pub enum FetchOneError {
@@ -474,7 +482,7 @@ mod tests {
 }
 ```
 
-首先创建 Response 类型，并改变 execute 的返回值类型：
+首先创建 `Response` 类型，并改变 `execute` 的返回值类型：
 
 ```rs
 pub struct Response {
@@ -486,7 +494,7 @@ pub struct Response {
 pub fn execute(repo: Arc<dyn Repository>, req: Request) -> Result<Response, Error> {
 ```
 
-现在，我们去处理 Ok(_) 的部分：
+现在，我们去处理 `Ok(_)` 的部分：
 
 ```rs
 use crate::domain::entities::{Pokemon, ...};
@@ -502,7 +510,7 @@ Ok(Pokemon {
 })
 ```
 
-最后修改 repo 的函数：
+最后修改存储库的 `fetch_one` 函数：
 
 ```rs
 pub trait Repository: Send + Sync {
@@ -548,7 +556,7 @@ mod fetch_pokemon;
 }
 ```
 
-现在我们创建对应的 handler：
+接着再 _api/fetch\_pokemon.rs_ 创建对应的 `serve` 函数：
 
 ```rs
 use crate::api::Status;
@@ -584,7 +592,7 @@ pub fn serve(repo: Arc<dyn Repository>, number: u16) -> rouille::Response {
 }
 ```
 
-现在您可以运行应用程序，打开您的 HTTP 客户端并将一些口袋妖怪添加到存储库中。然后，您应该能够通过在网址末尾添加口袋妖怪的数量来一一获取它们。
+现在您可以运行应用程序，打开您的 HTTP 客户端并将一些宝可梦添加到存储库中。然后，您应该能够通过在网址末尾添加宝可梦的数量来一一获取它们。
 例如，在我的计算机上，http://localhost:8000/25 上的 GET 请求返回了：
 
 ```json
@@ -599,7 +607,7 @@ pub fn serve(repo: Arc<dyn Repository>, number: u16) -> rouille::Response {
 
 ## 删除一只宝可梦
 
-我保证，我们很快就会完成。删除口袋妖怪是我们的最后一个用例。这个用例的结果有四种可能：
+我保证，我们很快就会完成。删除宝可梦是我们的最后一个用例。这个用例的结果有四种可能：
 
 - 成功
 - 请求格式错误
@@ -687,7 +695,7 @@ mod tests {
 }
 ```
 
-除了成功情况下的测试，其他的测试基本上是对 `domain/fetch_pokemon.rs` 的复制粘贴。接下来是类型：
+除了成功情况下的测试，其他的测试基本上是对 _domain/fetch\_pokemon.rs_ 的复制粘贴。接下来是类型：
 
 ```rs
 pub struct Request {
@@ -701,7 +709,7 @@ pub enum Error {
 }
 ```
 
-我们不需要定义 Response 类型，因为在 Ok 情况下我们不会返回任何内容。让我们定义 execute 函数：
+我们不需要定义 `Response` 类型，因为在 `Ok` 情况下我们不会返回任何内容。让我们定义 `execute` 函数：
 
 ```rs
 use crate::domain::entities::PokemonNumber;
@@ -721,7 +729,7 @@ pub fn execute(repo: Arc<dyn Repository>, req: Request) -> Result<(), Error> {
 }
 ```
 
-太好了! 现在我们只剩下 repository，我们很快就会完成：
+太好了! 现在我们只剩下实现存储库了，我们很快就会完成：
 
 ```rs
 pub enum DeleteError {
@@ -786,7 +794,7 @@ impl From<Status> for rouille::Response {
             ...
 ```
 
-我在 Status 中补充一个 OK 类型用来表示没有相应体的 200 状态码，现在添加对应的 handler：
+我在 `Status` 中补充一个 OK 类型用来表示没有相应体的 200 状态码，现在添加对应的 `serve` 函数：
 
 ```rs
 use crate::api::Status;
@@ -806,9 +814,11 @@ pub fn serve(repo: Arc<dyn Repository>, number: u16) -> rouille::Response {
 }
 ```
 
-通过使用 HTTP 客户端，现在你应该能够删除口袋妖怪了 :)
+通过使用 HTTP 客户端，现在你应该能够删除宝可梦了 :)
 
 ## 总结
 
 我希望它不会太长......但现在我们的客户很高兴！耶！下一次，我们将为我们的用例实现另一个前端。现在我们只有一个 HTTP API，如果还能有一个 CLI
-来管理我们的口袋妖怪就好了 :)
+来管理我们的宝可梦就好了 :)
+
+代码可以在 [Github](https://github.com/alexislozano/pokedex/tree/article-5) 上查看
